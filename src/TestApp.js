@@ -4,41 +4,79 @@ import { Link } from 'react-router-dom';
 import signalRServiceInstance from './signalr';
 
 const TestApp = () => {
+  const [instrumentID, setInstrumentID] = useState('');
+  const [data, setData] = useState(null);
+  const [instrumentDataDict, setInstrumentDataDict] = useState({});
 
-    const [instruments, setInstruments] = useState('');
-
-    useEffect(() => {
-        signalRServiceInstance.registerDataUpdateCallback(onDataUpdate);
-    }, []);
-
-    const onDataUpdate = (data) => {
-        console.log('Received data:', data);
+  useEffect(() => {
+    signalRServiceInstance.registerDataUpdateCallback(onDataUpdate);
+    return () => {
+      signalRServiceInstance.deregisterDataUpdateCallback();
     };
+  }, []);
 
-    const handleInputChange = (event) => {
-        setInstruments(event.target.value);
-    };
+  const onDataUpdate = (data) => {
+    const parsedData = JSON.parse(data);
+    const latestInstrumentID = parsedData.instrumentID;
+    const latestData = parsedData.data;
 
-    return (
-        <div>
-            <label htmlFor="instrumentID">ID</label>
-            <input
-                type="number"
-                name="instrumentID"
-                id="instrumentID"
-                value={instruments}
-                className="scanner-input-field"
-                onChange={handleInputChange}
-            />
-            <button onClick={() => signalRServiceInstance.subscribeInstrument(instruments, 'clientID')}>Add Instrument</button>
+    setData(latestData);
 
-            <Link to="/">
-            <button className="route-to-landing-page" role="button">
-              Return Home
-            </button>
-          </Link>
-        </div>
-    );
+    setInstrumentDataDict((prevDict) => ({
+      ...prevDict,
+      [latestInstrumentID]: latestData,
+    }));
+  };
+
+  const handleInputChange = (event) => {
+    setInstrumentID(event.target.value);
+  };
+
+  const addInstrument = () => {
+    signalRServiceInstance.subscribeInstrument(instrumentID, 'clientID');
+  };
+
+  return (
+    <div>
+      <label htmlFor="instrumentID">ID</label>
+      <input
+        type="number"
+        name="instrumentID"
+        id="instrumentID"
+        value={instrumentID}
+        className="scanner-input-field"
+        onChange={handleInputChange}
+      />
+      <button onClick={addInstrument}>Add Instrument</button>
+
+     
+
+      <Link to="/">
+        <button className="route-to-landing-page" role="button">
+          Return Home
+        </button>
+      </Link>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Instrument ID</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(instrumentDataDict).map(([id, value]) => (
+            <tr key={id}>
+              <td>Row</td>
+              <td>{id}</td>
+              <td>{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 };
 
 export default TestApp;
